@@ -7,6 +7,7 @@ package net.ericpetersen.media.videoPlayer {
 	import flash.media.SoundTransform;
 	import flash.net.NetConnection;
 	import flash.net.NetStream;
+    import net.dananichev.utils.Log;
 
 	/**
 	 * @author ericpetersen
@@ -54,7 +55,9 @@ package net.ericpetersen.media.videoPlayer {
 		protected var _st:SoundTransform;
 		protected var _videoName : String;
 		protected var _connectURL : String;
-		
+
+        private var Logger:Log = new Log();
+
 		/**
 		 * @return the netStream
 		 */
@@ -194,7 +197,7 @@ package net.ericpetersen.media.videoPlayer {
 		 */
 		public function pauseVideo():void {
 			if (ns) {
-				trace("pauseVideo");
+                Logger.WriteLine("pauseVideo");
 				ns.pause();
 				setPlayerState(PAUSED);
 			}
@@ -204,15 +207,15 @@ package net.ericpetersen.media.videoPlayer {
 		 * Play the video
 		 */
 		public function playVideo():void {
-			trace("playVideo");
+            Logger.WriteLine("playVideo");
 			if (_state == UNSTARTED) {
-				trace("ns was null, loading video");
+                Logger.WriteLine("ns was null, loading video " + _videoName);
 				ns.play(_videoName);
 			} else {
-				trace("resume");
+                Logger.WriteLine("resume");
 				ns.resume();
 			}
-			setPlayerState(PLAYING);
+//			setPlayerState(PLAYING);
 		}
 		
 		/**
@@ -232,7 +235,7 @@ package net.ericpetersen.media.videoPlayer {
 		 */
 		public function setVolume(value:int):void {
 			if (_st && ns) {
-				trace("setVolume : " + value);
+                Logger.WriteLine("setVolume : " + value);
 				var pct:Number = value/100;
 				_st.volume = pct; // 0 to 1
 				ns.soundTransform = _st;
@@ -266,8 +269,18 @@ package net.ericpetersen.media.videoPlayer {
 
 		protected function netStatusHandler(event:NetStatusEvent):void {
 			switch (event.info.code) {
+				case "NetConnection.Connect.Rejected":
+                    Logger.WriteLine("NetConnection.Connect.Rejected: " + event);
+					break;
+				case "NetConnection.Connect.Failed":
+                    Logger.WriteLine("NetConnection.Connect.Failed: " + event);
+					break;
 				case "NetConnection.Connect.Success":
 					connectStream();
+					break;
+				case "NetStream.Play.Start":
+                    setPlayerState(PLAYING);
+                    dispatchEvent(new Event(PLAYER_STATE_CHANGED));
 					break;
 				case "NetStream.Play.Stop":
 					if (_ns.time > 0 && _ns.time >= (_duration - 0.5)) {
@@ -276,7 +289,7 @@ package net.ericpetersen.media.videoPlayer {
 					}
 					break;
 				case "NetStream.Play.StreamNotFound":
-					trace("Stream not found: " + _videoName);
+                    Logger.WriteLine("Stream not found: " + _videoName);
 					break;
 				default :
 					break;
@@ -284,16 +297,17 @@ package net.ericpetersen.media.videoPlayer {
 		}
 
 		protected function securityErrorHandler(event:SecurityErrorEvent):void {
-			trace("securityErrorHandler: " + event);
+            Logger.WriteLine("securityErrorHandler: " + event);
 		}
 
 		protected function connectStream():void {
-			trace("connectStream");
+            Logger.WriteLine("connectStream");
 			if (_ns) {
 				_ns.close();
 				_ns.removeEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
 			}
 			_ns = new NetStream(_nc);
+			_ns.checkPolicyFile = true;
 			_ns.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler, false, 0, true);
 			var clientObj:Object = new Object();
 			clientObj.onMetaData = onMetaData;
@@ -307,20 +321,20 @@ package net.ericpetersen.media.videoPlayer {
 		}
 
 		protected function onMetaData(info:Object):void {
-			trace("metadata: duration=" + info.duration + " width=" + info.width + " height=" + info.height + " framerate=" + info.framerate);
+            Logger.WriteLine("metadata: duration=" + info.duration + " width=" + info.width + " height=" + info.height + " framerate=" + info.framerate);
 			_metaDataInfo = info;
 			_duration = info.duration;
 			dispatchEvent(new Event(METADATA_READY));
 		}
 
 		protected function onCuePoint(info:Object):void {
-			trace("cuepoint: time=" + info.time + " name=" + info.name + " type=" + info.type);
+            Logger.WriteLine("cuepoint: time=" + info.time + " name=" + info.name + " type=" + info.type);
 			_cuePointInfo = info;
 			dispatchEvent(new Event(CUE_POINT));
 		}
 
 		protected function onBWDone(info:Object = null):void {
-			trace("onBWDone");
+            Logger.WriteLine("onBWDone");
 		}
 	}
 }

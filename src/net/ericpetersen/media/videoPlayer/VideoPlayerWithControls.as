@@ -1,13 +1,32 @@
 package net.ericpetersen.media.videoPlayer {
-	import flash.events.MouseEvent;
-	import net.ericpetersen.media.videoPlayer.controls.VideoPlayerControls;
 
-	import flash.display.StageAlign;
-	import flash.display.StageDisplayState;
-	import flash.display.StageScaleMode;
-	import flash.events.Event;
-	import flash.events.FullScreenEvent;
+    import flash.events.MouseEvent;
+	import net.ericpetersen.media.videoPlayer.controls.VideoPlayerControls;
+	import net.ericpetersen.media.LogService;
+
 	import flash.geom.Point;
+    import flash.display.*;
+    import flash.media.Video;
+    import flash.errors.*;
+    import flash.events.*;
+    import flash.geom.Vector3D;
+    import flash.system.*;
+
+    import away3d.animators.*;
+    import away3d.animators.data.*;
+    import away3d.animators.nodes.*;
+    import away3d.cameras.*;
+    import away3d.containers.*;
+    import away3d.controllers.*;
+    import away3d.core.base.*;
+    import away3d.debug.*;
+    import away3d.entities.*;
+    import away3d.materials.*;
+    import away3d.materials.lightpickers.*;
+    import away3d.tools.helpers.*;
+    import away3d.utils.*;
+    import away3d.primitives.*;
+    import away3d.textures.*;
 
 	/**
 	 * <p>VideoPlayerWithControls is a video player with skinnable controls.
@@ -16,7 +35,7 @@ package net.ericpetersen.media.videoPlayer {
 	 * a scrubber, and a full-screen button.</p>
 	 * <p>Both progressive (downloaded file such as .flv) or streaming (such as rtmp:// links)
 	 * are supported.</p>
-	 * 
+	 *
 	 * @author ericpetersen
 	 */
 	public class VideoPlayerWithControls extends VideoPlayer {
@@ -26,21 +45,33 @@ package net.ericpetersen.media.videoPlayer {
 		* @eventType FULL_SCREEN_CHANGED
 		*/
 		public static const FULL_SCREEN_CHANGED:String = "FULL_SCREEN_CHANGED";
-		
+
 		protected var _controls:VideoPlayerControls;
 		protected var _isFullScreen:Boolean = false;
 		protected var _origVideoPt:Point;
 		protected var _origControlsPt:Point;
 		protected var _origPlayerWidth:Number;
 		protected var _origPlayerHeight:Number;
-		
+
+        private var Log:LogService = new LogService();
+
+
+        /** 3D scene variables */
+        private var _camera : Camera3D;
+        private var _cameraController:HoverController;
+        private var _view : View3D;
+        private var _mesh : Mesh;
+        private var _texture : TextureMaterial;
+        private var _bmpData : BitmapData;
+        private var _bmpTexture : BitmapTexture;
+
 		/**
 		 * @return Whether or not it is full-screen
 		 */
 		public function get isFullScreen():Boolean {
 			return _isFullScreen;
 		}
-		
+
 		/**
 		 * Constructor
 		 * @param controls The VideoPlayerControls that uses the swc asset
@@ -53,8 +84,8 @@ package net.ericpetersen.media.videoPlayer {
 			_origPlayerWidth = width;
 			_origPlayerHeight = height;
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
-		}
-		
+        }
+
 		/**
 		 * Sets the player to full screen
 		 * @param val true or false
@@ -79,11 +110,14 @@ package net.ericpetersen.media.videoPlayer {
 			removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
 			_controls.destroy();
 		}
-		
+
 		override protected function onAddedToStage(event:Event):void {
 			super.onAddedToStage(event);
 			stage.addEventListener(FullScreenEvent.FULL_SCREEN, onFullScreen);
 			buildControls();
+
+            _init3D();
+            _createScene();
 		}
 
 		protected function buildControls():void {
@@ -105,6 +139,9 @@ package net.ericpetersen.media.videoPlayer {
 				var pctProgress:Number = getCurrentTime()/getDuration();
 				_controls.updateVideoProgressBar(pctProgress);
 			}
+            _updateTexture();
+
+            _view.render();
 		}
 
 		protected function onVideoTimeScrubbed(event:Event):void {
@@ -117,7 +154,7 @@ package net.ericpetersen.media.videoPlayer {
 		protected function onPlayClick(event:Event):void {
 			playVideo();
 		}
-		
+
 		protected function onPauseClick(event:Event):void {
 			pauseVideo();
 		}
@@ -125,7 +162,7 @@ package net.ericpetersen.media.videoPlayer {
 		protected function onFullScreenClick(event:Event):void {
 			setFullScreen(!_isFullScreen);
 		}
-		
+
 		protected function onFullScreen(event:FullScreenEvent):void {
 			trace("onFullScreen");
 			if (event.fullScreen) {
@@ -141,7 +178,7 @@ package net.ericpetersen.media.videoPlayer {
 			}
 			dispatchEvent(new Event(FULL_SCREEN_CHANGED));
 		}
-		
+
 		protected function resizeFullScreenDisplay(event:Event = null):void {
 			trace("resizeFullScreenDisplay");
 			stage.scaleMode = StageScaleMode.NO_SCALE;
@@ -153,7 +190,7 @@ package net.ericpetersen.media.videoPlayer {
 			_controls.y = stage.stageHeight - _controls.height;
 			_controls.resize(true);
 		}
-		
+
 		protected function resumeFromFullScreenDisplay():void {
 			this.x = _origVideoPt.x;
 			this.y = _origVideoPt.y;
@@ -162,7 +199,7 @@ package net.ericpetersen.media.videoPlayer {
 			_controls.y = _origPlayerHeight;
 			_controls.resize(false);
 		}
-		
+
 		override protected function onPlayerStateChange(event:Event):void {
 			trace("onPlayerStateChange");
 			var state:int = getPlayerState();
@@ -188,6 +225,80 @@ package net.ericpetersen.media.videoPlayer {
 					break;
 			}
 		}
+
+
+
+        private function _init3D() : void {
+            Log.WriteLine("_init3D");
+            try {
+//                _scene = new Scene3D();
+
+                _camera = new Camera3D();
+
+                _view = new View3D();
+                _view.x = 50;
+                _view.y = 0;
+                _view.antiAlias = 4;
+//                _view.scene = _scene;
+//                _view.camera = _camera;
+                //setup the camera
+//                _view.camera.x = -400;
+                _view.camera.z = -600;
+                _view.camera.y = 500;
+                _view.camera.lookAt(new Vector3D());
+//
+//                _cameraController = new HoverController(_camera);
+//                _cameraController.distance = 1000;
+//                _cameraController.minTiltAngle = 0;
+//                _cameraController.maxTiltAngle = 90;
+//                _cameraController.panAngle = 45;
+//                _cameraController.tiltAngle = 20;
+
+                addChild(_view);
+            } catch (e : Error) {
+                Log.WriteLine("_init3D : error");
+                Log.WriteLine(e.toString());
+            }
+        };
+
+        private function _createScene() : void {
+            Log.WriteLine("_createScene");
+
+            // Var ini
+            _bmpData = new BitmapData(512,512);
+
+            var sphereGeometry:SphereGeometry = new SphereGeometry(480, 30, 30); // Local var which we will be free up after
+            _mesh = new Mesh(sphereGeometry); // Everything is a mesh at the end of the day
+            sphereGeometry = null; // Free up the geometry variable
+            _view.scene.addChild(_mesh); // Add the sphere mesh to the Away3D scene
+            _mesh.rotationY = 130;
+        };
+
+        private function _updateTexture() : void {
+            Log.WriteLine("_updateTexture");
+
+            if (super._videoContainer) {
+                // Draw!
+                _bmpData.draw(super._videoContainer);
+
+                // Try and use as little resources as possible
+                if (!_bmpTexture){
+                    _bmpTexture = new BitmapTexture(_bmpData);
+                } else {
+                    _bmpTexture.dispose();
+                    _bmpTexture = new BitmapTexture(_bmpData);
+                }
+
+                if (!_texture){
+                    _texture = new TextureMaterial(_bmpTexture, false, false, true);
+                } else {
+                    _texture.texture = _bmpTexture;
+                }
+
+                _mesh.material = _texture;
+            }
+        };
+
 
 	}
 }

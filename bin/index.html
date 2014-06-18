@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>RTMP Video Player</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<link rel="stylesheet" type="text/css" href="css/stylesheet.css"/>
+		<script type="text/javascript" src="js/button.js"></script>
+		<script type="text/javascript" src="js/swfobject.js"></script>
+		<script type="text/javascript">
+			swfobject.registerObject("videoplayer", "11.0.0", "expressInstall.swf");
+		</script>
+	</head>
+	<body>
+		<div>
+			<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="788" height="400" id="videoplayer">
+				<param name="movie" value="videoplayer.swf">
+				<param name="wmode" value="direct">
+				<param name="allowNetworking" value="all">
+				<param name="allowFullScreen" value="true">
+				<param name="allowScriptAccess" value="always">
+				<param name="FlashVars" value="streamURL=rtmp://school-edge.netlab:1935/cam3dekb/high"/>
+
+                <embed src="videoplayer.swf" width="788" height="400" name="videoplayer"
+                       quality="autohigh"
+                       bgcolor="#0"
+                       align="middle" allowFullScreen="true"
+                       allowScriptAccess="always"
+                       FlashVars="streamURL=rtmp://school-edge.netlab:1935/cam3dekb/high"
+                       type="application/x-shockwave-flash"
+                       allowNetworking="all"
+                       swliveconnect="true"
+                       wmode="direct"
+                       pluginspage="http://www.macromedia.com/go/getflashplayer" >
+                </embed>
+			</object>
+		</div>
+	</body>
+</html>

@@ -1,14 +1,25 @@
 package net.ericpetersen.media.videoPlayer {
-	import flash.display.Sprite;
+
+    import flash.display.Sprite;
 	import flash.display.StageDisplayState;
 	import flash.events.Event;
 	import flash.media.Video;
+    import net.dananichev.utils.Log;
+
+    import flash.geom.Point;
+    import flash.display.*;
+    import flash.media.Video;
+    import flash.errors.*;
+    import flash.events.*;
+    import flash.geom.Vector3D;
+    import flash.system.*;
 
 	/**
 	 * @author ericpetersen
 	 */
 	public class VideoPlayer extends Sprite {
 		protected var _video:Video;
+		protected var _videoContainer:Sprite;
 		protected var _connection:VideoConnection;
 		protected var _autoPlay:Boolean;
 		protected var _bg:Sprite;
@@ -16,6 +27,8 @@ package net.ericpetersen.media.videoPlayer {
 		protected var _origHeight:Number;
 		protected var _playerWidth:Number;
 		protected var _playerHeight:Number;
+
+        private var Logger:Log = new Log();
 
 		/**
 		 * Constructor
@@ -25,7 +38,7 @@ package net.ericpetersen.media.videoPlayer {
 		public function VideoPlayer(width:int = 320, height:int = 240) {
 			init(width, height);
 		}
-		
+
 		/**
 		 * Get the video name
 		 */
@@ -83,7 +96,7 @@ package net.ericpetersen.media.videoPlayer {
 		 * <p>Streaming from rtmp://appName/streamName.flv: loadVideo("streamName", "rtmp://appName"); // streamName does not include ".flv"</p>
 		 */
 		public function loadVideo(videoName:String, autoPlay:Boolean = true, connectURL:String = ""):void {
-			trace("loadVideo, videoName = " + videoName + ", connectURL = " + connectURL);
+            Logger.WriteLine("loadVideo, videoName = " + videoName + ", connectURL = " + connectURL);
 			_video.clear();
 			_autoPlay = autoPlay;
 			_connection.loadVideo(videoName, connectURL);
@@ -147,13 +160,24 @@ package net.ericpetersen.media.videoPlayer {
 		protected function build():void {
 			_bg = new Sprite();
 			_bg.mouseEnabled = false;
-			_bg.graphics.beginFill(0x000000, 1);
+			_bg.graphics.beginFill(0x000000, 0);
 			_bg.graphics.drawRect(0, 0, _playerWidth, _playerHeight);
 			_bg.graphics.endFill();
 			addChild(_bg);
-			_video = new Video(_playerWidth, _playerHeight);
-			_video.smoothing = true;
-			addChild(_video);
+
+
+            _video = new Video(_playerWidth, _playerHeight);
+            _video.x = 0;
+            _video.y = 0;
+            _video.smoothing = true;
+
+            _videoContainer = new Sprite();
+            _videoContainer.addChild(_video);
+//            _videoContainer.scaleX = _video.scaleY = 0.2;
+//            _videoContainer.x = 10;
+//            _videoContainer.y = 10;
+//            addChild(_videoContainer);
+
 			_connection = new VideoConnection();
 			_connection.addEventListener(VideoConnection.CONNECTION_READY, onConnectionReady, false, 0, true);
 			_connection.addEventListener(VideoConnection.METADATA_READY, onMetaDataReady, false, 0, true);
@@ -173,9 +197,9 @@ package net.ericpetersen.media.videoPlayer {
 			_bg.height = _playerHeight;
 			if (!isNaN(_origWidth) && !isNaN(_origHeight)) {
 				var _scaleX:Number = _playerWidth / _origWidth;
-				trace("_scaleX = " + _scaleX);
+                Logger.WriteLine("_scaleX = " + _scaleX);
 				var _scaleY:Number = _playerHeight / _origHeight;
-				trace("_scaleY = " + _scaleY);
+                Logger.WriteLine("_scaleY = " + _scaleY);
 	   			var scaleFactor:Number = Math.min(_scaleY, _scaleX);
 	   			/*
 	   			trace("scaleFactor = " + scaleFactor);
@@ -190,19 +214,19 @@ package net.ericpetersen.media.videoPlayer {
 				_video.x = Math.round((_playerWidth - _video.width)/2);
 				_video.y = Math.round((_playerHeight - _video.height)/2);
 			} else {
-				trace("origWidth and origHeight not available")
+                Logger.WriteLine("origWidth and origHeight not available")
 				_video.width = _playerWidth;
 				_video.height = _playerHeight;
 			}
 		}
 
 		protected function onConnectionReady(event:Event):void {
-			trace("onConnectionReady");
+            Logger.WriteLine("onConnectionReady");
 			_video.attachNetStream(_connection.ns);
 		}
 		
 		protected function onMetaDataReady(event:Event):void {
-			trace("onMetaDataReady");
+            Logger.WriteLine("onMetaDataReady");
 			if (!_autoPlay) {
 				pauseVideo();
 			}
@@ -216,31 +240,31 @@ package net.ericpetersen.media.videoPlayer {
 			} else {
 				_origHeight = NaN;
 			}
-			trace("_origWidth = " + _origWidth);
-			trace("_origHeight = " + _origHeight);
+            Logger.WriteLine("_origWidth = " + _origWidth);
+            Logger.WriteLine("_origHeight = " + _origHeight);
 			setScale();
 			dispatchEvent(event);
 		}
 
 		protected function onCuePoint(event:Event):void {
-			trace("onCuePoint");
+            Logger.WriteLine("onCuePoint");
 		}
 		
 		protected function onPlayerStateChange(event:Event):void {
-			trace("onPlayerStateChange");
+            Logger.WriteLine("onPlayerStateChange");
 			var state:int = _connection.getPlayerState();
 			switch (state) {
 				case VideoConnection.UNSTARTED :
-					trace("state: " + VideoConnection.UNSTARTED);
+                    Logger.WriteLine("state: " + VideoConnection.UNSTARTED);
 					break;
 				case VideoConnection.PLAYING :
-					trace("state: " + VideoConnection.PLAYING);
+                    Logger.WriteLine("state: " + VideoConnection.PLAYING);
 					break;
 				case VideoConnection.PAUSED :
-					trace("state: " + VideoConnection.PAUSED);
+                    Logger.WriteLine("state: " + VideoConnection.PAUSED);
 					break;
 				case VideoConnection.ENDED :
-					trace("state: " + VideoConnection.ENDED);
+                    Logger.WriteLine("state: " + VideoConnection.ENDED);
 					break;
 				default :
 					break;
