@@ -272,6 +272,9 @@ package net.ericpetersen.media.videoPlayer {
 				case "NetConnection.Connect.Rejected":
                     Logger.WriteLine("NetConnection.Connect.Rejected: " + event);
 					break;
+				case "NetConnection.Connect.Close":
+                    Logger.WriteLine("NetConnection.Connect.Close: " + event);
+					break;
 				case "NetConnection.Connect.Failed":
                     Logger.WriteLine("NetConnection.Connect.Failed: " + event);
 					break;

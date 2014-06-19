@@ -173,7 +173,7 @@ package net.ericpetersen.media.videoPlayer {
 
             _videoContainer = new Sprite();
             _videoContainer.addChild(_video);
-//            _videoContainer.scaleX = _video.scaleY = 0.2;
+////            _videoContainer.scaleX = _video.scaleY = 0.2;
 //            _videoContainer.x = 10;
 //            _videoContainer.y = 10;
 //            addChild(_videoContainer);
@@ -186,7 +186,7 @@ package net.ericpetersen.media.videoPlayer {
 		}
 		
 		protected function setSize(width:int, height:int):void {
-			trace("setSize,  width: " + width + ", height: " + height);
+			Logger.WriteLine("setSize,  width: " + width + ", height: " + height);
 			_playerWidth = width;
 			_playerHeight = height;
 			setScale();
